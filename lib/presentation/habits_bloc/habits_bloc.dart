@@ -58,8 +58,8 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
 
     emit(
       HabitsState(
-        habits: state.habits + result.success,
-        hasReachedMax: result.success.isEmpty,
+        habits: state.habits + result.success.$1,
+        hasReachedMax: result.success.$2,
         status: HabitsStatus.loaded,
       ),
     );

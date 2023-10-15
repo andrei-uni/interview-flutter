@@ -16,8 +16,9 @@ class HabitsFetcher {
   var currentCount = 0;
   var firstRun = true;
 
-  Future<Result<List<Habit>, ApiException>> fetchHabits({String? title, SortByDate? sortByDate}) async {
-    if (!firstRun && currentCount >= totalCount) return const Success([]);
+  Future<Result<(List<Habit> habits, bool hasReachedMax), ApiException>> fetchHabits(
+      {String? title, SortByDate? sortByDate}) async {
+    if (!firstRun && currentCount >= totalCount) return const Success(([], true));
 
     final result = await _appRepository.getHabits(
       GetHabitsRequest(
@@ -35,11 +36,14 @@ class HabitsFetcher {
     final habits = result.success;
     totalCount = habits.count;
 
-    if (habits.habits == null) return const Success([]);
+    if (habits.habits == null) return const Success(([], true));
 
     currentCount += habits.habits!.length;
 
-    return Success(habits.habits!.map((e) => HabitMapper.fromApi(e)).toList());
+    return Success((
+      habits.habits!.map((e) => HabitMapper.fromApi(e)).toList(),
+      currentCount < _limit
+    ));
   }
 
   void reset() {
