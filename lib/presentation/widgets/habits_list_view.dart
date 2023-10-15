@@ -9,7 +9,7 @@ class HabitsListView extends StatefulWidget {
     this.habits, {
     this.onBottomReached,
     this.hasReachedMax = true,
-    this.habitsStatus = HabitsStatus.success,
+    this.habitsStatus = HabitsStatus.loaded,
     super.key,
   });
 
@@ -34,17 +34,12 @@ class _HabitsListViewState extends State<HabitsListView> {
   @override
   Widget build(BuildContext context) {
     return switch (widget.habitsStatus) {
-      HabitsStatus.failure => () {
-          return const Center(
-            child: Text("Что-то пошло не так :("),
-          );
-        }(),
       HabitsStatus.loading => () {
           return const Center(
             child: CircularProgressIndicator(),
           );
         }(),
-      HabitsStatus.success => () {
+      HabitsStatus.loaded => () {
           if (widget.habits.isEmpty) {
             return const Center(
               child: Text("Ничего не нашли :("),

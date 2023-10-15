@@ -30,7 +30,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     on<EditHabit>(_onEditHabit);
     on<CompleteHabit>(_onCompleteHabit);
     on<SearchSubmitted>(_onSearchSubmitted);
-    on<SearchCancelled>(_onSearchCancelled);  
+    on<SearchCancelled>(_onSearchCancelled);
   }
 
   var _appStatus = AppStatus.usual;
@@ -44,15 +44,13 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
       AppStatus.searching => _habitsFetcher.fetchHabits(title: _title, sortByDate: _sortByDate),
     };
 
-    final state = this.state;
-
     if (result.isFailure) {
       emit(
         HabitsState(
           habits: state.habits,
           messageToDisplay: result.failure.message,
           hasReachedMax: true,
-          status: HabitsStatus.failure,
+          status: HabitsStatus.loaded,
         ),
       );
       return;
@@ -62,7 +60,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
       HabitsState(
         habits: state.habits + result.success,
         hasReachedMax: result.success.isEmpty,
-        status: HabitsStatus.success,
+        status: HabitsStatus.loaded,
       ),
     );
   }
@@ -71,27 +69,27 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     final result = await _appRepository.addHabit(event.habit);
 
     if (result.isFailure) {
-      emit(HabitsState(habits: state.habits, messageToDisplay: result.failure.message, status: HabitsStatus.success));
+      emit(state.copyWith(messageToDisplay: result.failure.message));
       return;
     }
 
-    emit(HabitsState(habits: [result.success] + state.habits, status: HabitsStatus.success));
+    _loadAgain(emit);
   }
 
   void _onEditHabit(EditHabit event, Emitter<HabitsState> emit) async {
     final apiException = await _appRepository.updateHabit(event.habit);
-    final state = this.state;
-    final habits = state.habits;
 
     if (apiException != null) {
-      emit(HabitsState(habits: habits, messageToDisplay: apiException.message, status: HabitsStatus.success));
+      emit(state.copyWith(messageToDisplay: apiException.message));
       return;
     }
+
+    final habits = state.habits;
 
     final index = habits.indexWhere((e) => e.uid == event.habit.uid);
     habits[index] = event.habit;
 
-    emit(HabitsState(habits: habits, status: HabitsStatus.success));
+    emit(state.copyWith(habits: habits));
   }
 
   void _onCompleteHabit(CompleteHabit event, Emitter<HabitsState> emit) async {
@@ -99,13 +97,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     final habits = state.habits;
 
     if (!event.habit.canStillComplete) {
-      emit(
-        HabitsState(
-          habits: habits,
-          messageToDisplay: _messageAboutHabitCompletion(event.habit),
-          status: HabitsStatus.success,
-        ),
-      );
+      emit(state.copyWith(messageToDisplay: _messageAboutHabitCompletion(event.habit)));
       return;
     }
 
@@ -113,7 +105,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     final apiException = await _appRepository.completeHabit(event.habit, now);
 
     if (apiException != null) {
-      emit(HabitsState(habits: habits, messageToDisplay: apiException.message, status: HabitsStatus.success));
+      emit(state.copyWith(messageToDisplay: apiException.message));
       return;
     }
 
@@ -121,29 +113,24 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     final index = habits.indexWhere((e) => e.uid == event.habit.uid);
     habits[index] = newHabit;
 
-    emit(HabitsState(
-        habits: habits, messageToDisplay: _messageAboutHabitCompletion(newHabit), status: HabitsStatus.success));
+    emit(state.copyWith(messageToDisplay: _messageAboutHabitCompletion(newHabit)));
   }
 
   void _onSearchSubmitted(SearchSubmitted event, Emitter<HabitsState> emit) {
     _appStatus = AppStatus.searching;
-    _habitsFetcher.reset();
     _title = event.query;
     _sortByDate = event.sortByDate;
 
-    emit(
-      const HabitsState(
-        habits: [],
-        hasReachedMax: false,
-        status: HabitsStatus.loading,
-      ),
-    );
-
-    add(GetHabits());
+    _loadAgain(emit);
   }
 
   void _onSearchCancelled(SearchCancelled event, Emitter<HabitsState> emit) {
     _appStatus = AppStatus.usual;
+
+    _loadAgain(emit);
+  }
+
+  void _loadAgain(Emitter<HabitsState> emit) {
     _habitsFetcher.reset();
 
     emit(

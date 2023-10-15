@@ -12,10 +12,23 @@ class HabitsState {
   final String? messageToDisplay;
   final bool hasReachedMax;
   final HabitsStatus status;
+
+  HabitsState copyWith({
+    List<Habit>? habits,
+    String? messageToDisplay,
+    bool? hasReachedMax,
+    HabitsStatus? status,
+  }) {
+    return HabitsState(
+      habits: habits ?? this.habits,
+      messageToDisplay: messageToDisplay,
+      hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      status: status ?? this.status,
+    );
+  }
 }
 
 enum HabitsStatus {
-  failure,
-  success,
+  loaded,
   loading,
 }
